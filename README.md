@@ -1,37 +1,32 @@
 # Data Pipeline Orchestrator
 
-Enterprise-grade orchestration for cross-platform data pipelines using **Apache Airflow**. This project synchronizes financial and airline datasets across AWS S3, Databricks, and Snowflake.
+This project manages the end-to-end data lifecycle for enterprise datasets across a multi-cloud environment (**AWS**, **Databricks**, and **Snowflake**) using **Apache Airflow**.
 
-## Pipeline Observability
+## Data Lifecycle Management
 
-Observability is critical for maintaining trust in enterprise data. This orchestrator provides:
+Airflow serves as the central nervous system for our data platform, orchestrating the following flow:
 
-- **Task-Level Monitoring**: Every stage of the pipeline (Extraction, Transformation, Loading) is tracked individually.
-- **Lineage Tracking**: Clear dependencies between Databricks Spark jobs and Snowflake SQL refreshes.
-- **Logging**: Centralized logs for all tasks, accessible via the Airflow UI for rapid debugging.
-- **SLA Tracking**: Monitors job duration to ensure data is ready for business stakeholders by the required deadlines.
+1.  **Ingestion (AWS S3)**: Monitoring and triggering extraction processes from S3 landing zones.
+2.  **Transformation (Databricks/Spark)**: Orchestrating complex Medallion Architecture pipelines (Bronze/Silver/Gold) via the `DatabricksSubmitRunOperator`.
+3.  **Serving (Snowflake)**: Finalizing the lifecycle by refreshing analytics-ready tables in Snowflake using the `SnowflakeOperator`.
 
-## Error Handling & Reliability
+## Error Handling & Notifications
 
-To ensure the integrity of financial and airline data, we implement several layers of error handling:
+Reliability is built into every layer of the orchestration:
 
-1.  **Retry Logic**: Automated retries with exponential backoff for transient failures (e.g., network blips or API rate limits).
-2.  **Failure Callbacks**: The `on_failure_callback` function triggers immediate notifications to the engineering team.
-3.  **Slack Integration**: Real-time alerts sent to `#data-ops` channel including the specific task failure, DAG ID, and direct links to execution logs.
-4.  **ACID Guarantees**: By leveraging Delta Lake and Snowflake, the orchestrator ensures that even if a pipeline step fails, the system remains in a consistent state without partial data loads.
+-   **Retry Strategy**: Tasks are configured with automated retries and a 5-minute delay to handle transient cloud connectivity issues.
+-   **Slack Notifications**: In the event of a critical failure, a global `on_failure_callback` triggers a Slack webhook. This sends an immediate alert to the engineering team with the specific DAG/Task ID and a direct link to the Airflow logs for rapid triage.
+-   **Email Alerts**: Secondary notifications are sent via email to ensure visibility across the organization.
+
+## Project Structure
+
+- `dags/`: Contains the `enterprise_orchestrator` DAG definitions.
+- `plugins/`: Custom operators and sensors.
 
 ## Tech Stack
 
-- **Orchestrator**: Apache Airflow 2.0+
-- **Compute**: Databricks (Spark)
-- **Warehouse**: Snowflake
-- **Alerting**: Slack / Email
-
-## Setup
-
-1. Configure Airflow Connections:
-   - `databricks_default`: Token-based access to your Databricks workspace.
-   - `snowflake_default`: Credentials for your Snowflake warehouse.
-   - `slack_webhook`: Webhook URL for the Slack notification channel.
-2. Deploy the DAGs from `dags/` to your Airflow environment.
-3. Set the `enterprise_data_sync` DAG to active.
+- **Orchestration**: Apache Airflow
+- **Cloud Storage**: AWS S3
+- **Distributed Compute**: Databricks (Spark)
+- **Data Warehouse**: Snowflake
+- **Monitoring**: Slack API
